@@ -14,7 +14,7 @@ A Model Context Protocol (MCP) server that wraps the [Star Wars API (SWAPI)](htt
 ## Code Structure
 
 - `index.ts`: Main entry point. Sets up the MCP server, registers tools, and configures HTTP and stdio transports.
-- `.gitignore`: Standard Node/TypeScript ignores.
+- `test-client/`: Example OpenAI client that demonstrates how to call the MCP server as a tool from an LLM.
 
 ## Tool Details
 
@@ -128,6 +128,66 @@ curl -N -X POST http://localhost:3000/mcp \
     "id": 3
   }'
 ```
+
+## Test Client: OpenAI + MCP Integration
+
+The `test-client/` directory contains an example script (`swapi-client.ts`) that demonstrates how to call the MCP server as a tool from an OpenAI LLM (e.g., GPT-4o-mini).
+
+### How it works
+
+- Uses the OpenAI SDK and MCP tool integration.
+- Registers the MCP server as a tool for the LLM.
+- Sends a prompt/question to the LLM, which can call the MCP tools to answer.
+
+### Example: `test-client/swapi-client.ts`
+
+```typescript
+// node --loader ts-node/esm ./swapi-client.ts
+import 'dotenv/config';
+import OpenAI from 'openai';
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+
+const tools = [
+  {
+    type: "mcp" as const,
+    server_label: 'swapi',
+    server_url: 'http://localhost:3000/mcp', // this has to be accessible from your LLM
+    require_approval: 'never' as const,
+  },
+];
+
+const resp = await openai.responses.create({
+  model: 'gpt-4o-mini',
+  tools,
+  input: 'Where was Luke Skywalker born and how tall is he?',
+});
+
+console.log(resp.output_text);
+```
+
+### Running the test client
+
+1. Install dependencies:
+   ```bash
+   cd test-client
+   npm install
+   ```
+2. Set your OpenAI API key in a `.env` file:
+   ```env
+   OPENAI_API_KEY=sk-...
+   ```
+3. Start the MCP server (in the parent directory):
+   ```bash
+   npx ts-node index.ts
+   ```
+4. Run the test client:
+   ```bash
+   node --loader ts-node/esm ./swapi-client.ts
+   ```
+
+- You should see the LLM's answer, which may include information fetched from the SWAPI MCP tools.
+- You can also point the `server_url` to a public ngrok URL if you want to test from outside localhost.
 
 ## Notes
 
