@@ -103,12 +103,12 @@ This is the easiest way to use this MCP server from a second local VS Code windo
 4. Choose a local/command (stdio) server type.
 5. Use these values:
    - Name: `swapi-local`
-  - Command: `node`
-  - Args: `--import`, `tsx`, `index.ts`
-   - Working directory: `/home/ola/work/ai-demos/swapi-mcp-server`
-  - Environment variables:
-    - `ENABLE_HTTP=0`
-    - `ENABLE_STDIO=1`
+   - Command: `node`
+   - Args: `--import`, `tsx`, `index.ts`
+   - Working directory: `/path/to/swapi-mcp-server`
+   - Environment variables:
+     - `ENABLE_HTTP=0`
+     - `ENABLE_STDIO=1`
 6. Save the MCP server configuration and reload the second VS Code window if prompted.
 7. In Chat, verify the server is available (for example via MCP server/tools list UI, then call a tool like `search_character`).
 
@@ -121,11 +121,28 @@ If your VS Code MCP setup uses a JSON config file, this is the equivalent stdio 
       "type": "stdio",
       "command": "node",
       "args": ["--import", "tsx", "index.ts"],
-      "cwd": "/home/ola/work/ai-demos/swapi-mcp-server",
+      "cwd": "/path/to/swapi-mcp-server",
       "env": {
         "ENABLE_HTTP": "0",
         "ENABLE_STDIO": "1"
       }
+    }
+  }
+}
+```
+
+Minimal server entry (using placeholder path):
+
+```json
+{
+  "swapi-local": {
+    "type": "stdio",
+    "command": "node",
+    "args": ["--import", "tsx", "index.ts"],
+    "cwd": "/path/to/swapi-mcp-server",
+    "env": {
+      "ENABLE_HTTP": "0",
+      "ENABLE_STDIO": "1"
     }
   }
 }
