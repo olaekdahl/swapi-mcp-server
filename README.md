@@ -91,6 +91,75 @@ npm run build
 npm start
 ```
 
+## Use From Another VS Code Instance (Same Machine)
+
+This is the easiest way to use this MCP server from a second local VS Code window.
+
+### Option A (recommended): Register as a stdio MCP server
+
+1. Open a second VS Code instance.
+2. Open the workspace where you want to use this MCP server.
+3. Open Command Palette and run `MCP: Add Server`.
+4. Choose a local/command (stdio) server type.
+5. Use these values:
+   - Name: `swapi-local`
+   - Command: `npm`
+   - Args: `run`, `dev`
+   - Working directory: `/home/ola/work/ai-demos/swapi-mcp-server`
+   - Environment variables:
+     - `ENABLE_HTTP=0`
+     - `ENABLE_STDIO=1`
+6. Save the MCP server configuration and reload the second VS Code window if prompted.
+7. In Chat, verify the server is available (for example via MCP server/tools list UI, then call a tool like `search_character`).
+
+If your VS Code MCP setup uses a JSON config file, this is the equivalent stdio config:
+
+```json
+{
+  "servers": {
+    "swapi-local": {
+      "type": "stdio",
+      "command": "npm",
+      "args": ["run", "dev"],
+      "cwd": "/home/ola/work/ai-demos/swapi-mcp-server",
+      "env": {
+        "ENABLE_HTTP": "0",
+        "ENABLE_STDIO": "1"
+      }
+    }
+  }
+}
+```
+
+### Option B: Register as an HTTP MCP server
+
+1. In this repository, start the server in a terminal:
+
+```bash
+npm run dev
+```
+
+2. In the second VS Code instance, add an MCP server using URL:
+
+```text
+http://localhost:3000/mcp
+```
+
+3. Save and test by calling a tool from Chat.
+
+If your VS Code MCP setup uses JSON config, this is the equivalent HTTP config:
+
+```json
+{
+  "servers": {
+    "swapi-http": {
+      "type": "http",
+      "url": "http://localhost:3000/mcp"
+    }
+  }
+}
+```
+
 ## Example HTTP Request
 
 **List tools:**
