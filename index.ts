@@ -146,6 +146,183 @@ export const createMcpServer = (fetchImpl: typeof fetch = fetch) => {
     }
   );
 
+  // Register resources (static content that can be referenced)
+  server.registerResource(
+    "introduction",
+    "star-wars-guide://introduction",
+    {
+      mimeType: "text/plain",
+      name: "Star Wars Universe Introduction",
+      description: "Introduction to the Star Wars universe and key information",
+    },
+    async () => {
+      return {
+        contents: [
+          {
+            uri: "star-wars-guide://introduction",
+            mimeType: "text/plain",
+            text: `# Star Wars Universe Guide
+
+The Star Wars saga spans multiple eras, featuring iconic characters, planets, and epic films.
+
+## Key Resources Available
+- **Characters**: Search for and retrieve information about Star Wars characters
+- **Planets**: Get details about worlds across the galaxy
+- **Films**: Access information about the Star Wars films
+
+## Available Tools
+- search_character: Find characters by name
+- get_planet: Retrieve planet information by ID
+- get_film: Get film details by ID
+
+Use these tools to explore the Star Wars universe!`,
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerResource(
+    "popular-characters",
+    "star-wars-guide://popular-characters",
+    {
+      mimeType: "text/plain",
+      name: "Popular Star Wars Characters",
+      description: "Information about popular Star Wars characters to explore",
+    },
+    async () => {
+      return {
+        contents: [
+          {
+            uri: "star-wars-guide://popular-characters",
+            mimeType: "text/plain",
+            text: `# Popular Star Wars Characters
+
+Here are some popular characters you can search for:
+
+1. **Luke Skywalker** - Main protagonist of the original trilogy
+2. **Darth Vader** - Iconic Sith Lord and Anakin Skywalker
+3. **Princess Leia** - Leader and force user
+4. **Han Solo** - Smuggler and pilot of the Millennium Falcon
+5. **Yoda** - Ancient Jedi Master
+6. **Obi-Wan Kenobi** - Jedi Knight and mentor
+7. **Darth Sidious** - The Emperor and Sith Lord
+8. **Boba Fett** - Legendary bounty hunter
+9. **Chewbacca** - Wookiee co-pilot
+10. **C-3PO** - Protocol droid
+
+Try searching for any of these characters using the search_character tool!`,
+          },
+        ],
+      };
+    }
+  );
+
+  // Register prompt templates (reusable prompts for common tasks)
+  server.registerPrompt(
+    "analyze-character",
+    {
+      title: "Analyze Star Wars Character",
+      description: "Template for analyzing a Star Wars character's background and role",
+      argsSchema: {
+        characterName: z.string().describe("The name of the character to analyze"),
+      },
+    },
+    async ({ characterName }) => {
+      return {
+        description: `Analyzing character: ${characterName}`,
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Please analyze the Star Wars character "${characterName}".
+
+First, search for this character to get their information, then provide:
+1. Background and origin
+2. Role in the Star Wars saga
+3. Key relationships with other characters
+4. Notable abilities or characteristics
+5. Appearances in films or shows
+
+Use the search_character tool to find information about them.`,
+            },
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerPrompt(
+    "compare-characters",
+    {
+      title: "Compare Two Star Wars Characters",
+      description: "Template for comparing and contrasting two Star Wars characters",
+      argsSchema: {
+        character1: z.string().describe("First character to compare"),
+        character2: z.string().describe("Second character to compare"),
+      },
+    },
+    async ({ character1, character2 }) => {
+      return {
+        description: `Comparing characters: ${character1} and ${character2}`,
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Please compare and contrast the Star Wars characters "${character1}" and "${character2}".
+
+Search for both characters using the search_character tool, then provide:
+1. Similarities (background, abilities, role in the story)
+2. Key differences (goals, allegiances, powers)
+3. How they interact with each other (if applicable)
+4. Their relative power levels or influence
+5. Which era(s) of the saga they appear in
+
+Format your response as a detailed comparison.`,
+            },
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerPrompt(
+    "explore-planet",
+    {
+      title: "Explore a Star Wars Planet",
+      description: "Template for exploring and describing a Star Wars planet",
+      argsSchema: {
+        planetId: z.string().describe("The ID of the planet to explore (e.g., '1' for Tatooine)"),
+      },
+    },
+    async ({ planetId }) => {
+      return {
+        description: `Exploring planet: ${planetId}`,
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Please provide a detailed exploration of the Star Wars planet with ID "${planetId}".
+
+Use the get_planet tool to retrieve the planet information, then provide:
+1. Planet description and environment
+2. Climate and terrain
+3. Notable inhabitants and species
+4. Important events that took place there
+5. Its significance in the Star Wars story
+6. Any connection to major characters
+
+Create an engaging narrative about this world.`,
+            },
+          },
+        ],
+      };
+    }
+  );
+
   return server;
 };
 
