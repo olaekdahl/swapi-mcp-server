@@ -63,6 +63,46 @@ const makeToolError = (message: string) => {
   };
 };
 
+const buildAnalyzeCharacterPromptText = (characterName: string): string => {
+  return `Please analyze the Star Wars character "${characterName}".
+
+First, search for this character to get their information, then provide:
+1. Background and origin
+2. Role in the Star Wars saga
+3. Key relationships with other characters
+4. Notable abilities or characteristics
+5. Appearances in films or shows
+
+Use the search_character tool to find information about them.`;
+};
+
+const buildCompareCharactersPromptText = (character1: string, character2: string): string => {
+  return `Please compare and contrast the Star Wars characters "${character1}" and "${character2}".
+
+Search for both characters using the search_character tool, then provide:
+1. Similarities (background, abilities, role in the story)
+2. Key differences (goals, allegiances, powers)
+3. How they interact with each other (if applicable)
+4. Their relative power levels or influence
+5. Which era(s) of the saga they appear in
+
+Format your response as a detailed comparison.`;
+};
+
+const buildExplorePlanetPromptText = (planetId: string): string => {
+  return `Please provide a detailed exploration of the Star Wars planet with ID "${planetId}".
+
+Use the get_planet tool to retrieve the planet information, then provide:
+1. Planet description and environment
+2. Climate and terrain
+3. Notable inhabitants and species
+4. Important events that took place there
+5. Its significance in the Star Wars story
+6. Any connection to major characters
+
+Create an engaging narrative about this world.`;
+};
+
 export const fetchSwapiJson = async (fetchImpl: typeof fetch, path: string) => {
   let response: globalThis.Response;
   try {
@@ -143,6 +183,49 @@ export const createMcpServer = (fetchImpl: typeof fetch = fetch) => {
         const details = error instanceof Error ? error.message : String(error);
         return makeToolError(details);
       }
+    }
+  );
+
+  // Prompt compatibility tools for clients that can only call tools (not prompts/get).
+  server.registerTool(
+    "prompt_analyze_character",
+    {
+      title: "Prompt Template: Analyze Character",
+      description: "Returns the analyze-character prompt template text for tools-only clients",
+      inputSchema: { characterName: z.string() },
+    },
+    async ({ characterName }) => {
+      return {
+        content: [{ type: "text" as const, text: buildAnalyzeCharacterPromptText(characterName) }],
+      };
+    }
+  );
+
+  server.registerTool(
+    "prompt_compare_characters",
+    {
+      title: "Prompt Template: Compare Characters",
+      description: "Returns the compare-characters prompt template text for tools-only clients",
+      inputSchema: { character1: z.string(), character2: z.string() },
+    },
+    async ({ character1, character2 }) => {
+      return {
+        content: [{ type: "text" as const, text: buildCompareCharactersPromptText(character1, character2) }],
+      };
+    }
+  );
+
+  server.registerTool(
+    "prompt_explore_planet",
+    {
+      title: "Prompt Template: Explore Planet",
+      description: "Returns the explore-planet prompt template text for tools-only clients",
+      inputSchema: { planetId: z.string() },
+    },
+    async ({ planetId }) => {
+      return {
+        content: [{ type: "text" as const, text: buildExplorePlanetPromptText(planetId) }],
+      };
     }
   );
 
@@ -236,16 +319,7 @@ Try searching for any of these characters using the search_character tool!`,
             role: "user",
             content: {
               type: "text",
-              text: `Please analyze the Star Wars character "${characterName}".
-
-First, search for this character to get their information, then provide:
-1. Background and origin
-2. Role in the Star Wars saga
-3. Key relationships with other characters
-4. Notable abilities or characteristics
-5. Appearances in films or shows
-
-Use the search_character tool to find information about them.`,
+              text: buildAnalyzeCharacterPromptText(characterName),
             },
           },
         ],
@@ -271,16 +345,7 @@ Use the search_character tool to find information about them.`,
             role: "user",
             content: {
               type: "text",
-              text: `Please compare and contrast the Star Wars characters "${character1}" and "${character2}".
-
-Search for both characters using the search_character tool, then provide:
-1. Similarities (background, abilities, role in the story)
-2. Key differences (goals, allegiances, powers)
-3. How they interact with each other (if applicable)
-4. Their relative power levels or influence
-5. Which era(s) of the saga they appear in
-
-Format your response as a detailed comparison.`,
+              text: buildCompareCharactersPromptText(character1, character2),
             },
           },
         ],
@@ -305,17 +370,7 @@ Format your response as a detailed comparison.`,
             role: "user",
             content: {
               type: "text",
-              text: `Please provide a detailed exploration of the Star Wars planet with ID "${planetId}".
-
-Use the get_planet tool to retrieve the planet information, then provide:
-1. Planet description and environment
-2. Climate and terrain
-3. Notable inhabitants and species
-4. Important events that took place there
-5. Its significance in the Star Wars story
-6. Any connection to major characters
-
-Create an engaging narrative about this world.`,
+              text: buildExplorePlanetPromptText(planetId),
             },
           },
         ],

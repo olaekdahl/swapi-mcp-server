@@ -9,6 +9,14 @@ A Model Context Protocol (MCP) server that wraps the [Star Wars API (SWAPI)](htt
   - `search_character`: Search for a Star Wars character by name
   - `get_planet`: Get detailed planet info by ID
   - `get_film`: Get detailed film info by ID
+- Exposes prompt templates:
+  - `analyze-character`
+  - `compare-characters`
+  - `explore-planet`
+- Exposes prompt compatibility tools for clients that only support tools:
+  - `prompt_analyze_character`
+  - `prompt_compare_characters`
+  - `prompt_explore_planet`
 - Supports HTTP (stateless, streamable) and optional stdio transport
 - Includes unit, integration, and smoke tests
 
@@ -37,6 +45,31 @@ A Model Context Protocol (MCP) server that wraps the [Star Wars API (SWAPI)](htt
 - **Input:** `{ id: string }`
 - **Description:** Fetches detailed info for a film by its SWAPI ID.
 - **Returns:** JSON-formatted film details.
+
+### prompt_analyze_character
+
+- **Input:** `{ characterName: string }`
+- **Description:** Returns the analyze-character prompt text as tool output.
+
+### prompt_compare_characters
+
+- **Input:** `{ character1: string, character2: string }`
+- **Description:** Returns the compare-characters prompt text as tool output.
+
+### prompt_explore_planet
+
+- **Input:** `{ planetId: string }`
+- **Description:** Returns the explore-planet prompt text as tool output.
+
+## Prompt Templates
+
+The server also exposes MCP prompt templates via prompt endpoints:
+
+- `analyze-character` with argument `characterName`
+- `compare-characters` with arguments `character1`, `character2`
+- `explore-planet` with argument `planetId`
+
+Some chat surfaces only call MCP tools and do not directly invoke prompt endpoints. In those cases, use the `prompt_*` compatibility tools above.
 
 ## How It Works
 
