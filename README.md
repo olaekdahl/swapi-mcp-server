@@ -9,12 +9,14 @@ A Model Context Protocol (MCP) server that wraps the [Star Wars API (SWAPI)](htt
   - `search_character`: Search for a Star Wars character by name
   - `get_planet`: Get detailed planet info by ID
   - `get_film`: Get detailed film info by ID
-- Supports both HTTP (stateless, streamable) and stdio transports
+- Supports HTTP (stateless, streamable) and optional stdio transport
+- Includes unit, integration, and smoke tests
 
 ## Code Structure
 
-- `index.ts`: Main entry point. Sets up the MCP server, registers tools, and configures HTTP and stdio transports.
+- `index.ts`: Main entry point. Exports app/server builders, registers tools, and configures HTTP/stdio transports.
 - `test-client/`: Example OpenAI client that demonstrates how to call the MCP server as a tool from an LLM.
+- `tests/`: Unit tests, MCP HTTP integration tests, and smoke test script.
 
 ## Tool Details
 
@@ -46,7 +48,7 @@ A Model Context Protocol (MCP) server that wraps the [Star Wars API (SWAPI)](htt
 
 ### Prerequisites
 
-- Node.js v18 or newer
+- Node.js v22 or newer
 - npm
 
 ### Install dependencies
@@ -55,17 +57,39 @@ A Model Context Protocol (MCP) server that wraps the [Star Wars API (SWAPI)](htt
 npm install
 ```
 
+### Environment variables
+
+- `PORT` (default `3000`)
+- `ENABLE_HTTP` (default `1`; set `0` to disable HTTP transport)
+- `ENABLE_STDIO` (default `0`; set `1` to enable stdio transport)
+- `ALLOWED_ORIGINS` (comma-separated CORS allowlist, defaults to `http://localhost:3000,http://localhost:5173`)
+
 ### Run in HTTP mode (default)
 
 ```bash
-npx ts-node index.ts
+npm run dev
 ```
 
 - The server will listen on `http://localhost:3000/mcp` (or the port set in the `PORT` environment variable).
 
 ### Run in stdio mode (for CLI clients)
 
-- The server automatically starts a stdio transport for CLI-based MCP clients.
+```bash
+ENABLE_HTTP=0 ENABLE_STDIO=1 npm run dev
+```
+
+### Run both transports
+
+```bash
+ENABLE_STDIO=1 npm run dev
+```
+
+### Build and run compiled output
+
+```bash
+npm run build
+npm start
+```
 
 ## Example HTTP Request
 
@@ -147,18 +171,20 @@ import 'dotenv/config';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+const serverUrl = process.env.MCP_SERVER_URL ?? 'http://localhost:3000/mcp';
+const model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
 
 const tools = [
   {
     type: "mcp" as const,
     server_label: 'swapi',
-    server_url: 'http://localhost:3000/mcp', // this has to be accessible from your LLM
+    server_url: serverUrl,
     require_approval: 'never' as const,
   },
 ];
 
 const resp = await openai.responses.create({
-  model: 'gpt-4o-mini',
+  model,
   tools,
   input: 'Where was Luke Skywalker born and how tall is he?',
 });
@@ -179,18 +205,41 @@ console.log(resp.output_text);
    ```
 3. Start the MCP server (in the parent directory):
    ```bash
-   npx ts-node index.ts
+  npm run dev
    ```
 4. Run the test client:
    ```bash
-   node --loader ts-node/esm ./swapi-client.ts
+  cd test-client
+  npm run dev
    ```
 
 - You should see the LLM's answer, which may include information fetched from the SWAPI MCP tools.
-- You can also point the `server_url` to a public ngrok URL if you want to test from outside localhost.
+- To test with a remote tunnel, set `MCP_SERVER_URL` in `test-client/.env`.
+
+## Testing
+
+Run all tests:
+
+```bash
+npm test
+```
+
+Run focused suites:
+
+```bash
+npm run test:unit
+npm run test:integration
+npm run smoke
+```
+
+Run full verification:
+
+```bash
+npm run verify
+```
 
 ## Notes
 
 - The server is stateless for HTTP requests (no session management).
-- CORS is enabled for the `mcp-session-id` header.
+- CORS is enabled with an allowlist and exposes the `mcp-session-id` header.
 - For more details on MCP, see the [TypeScript SDK documentation](https://github.com/modelcontextprotocol/typescript-sdk).
