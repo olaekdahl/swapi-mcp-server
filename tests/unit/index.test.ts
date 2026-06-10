@@ -1,4 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { once } from "node:events";
+import { spawn } from "node:child_process";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { setTimeout as delay } from "node:timers/promises";
 import { fetchSwapiJson, parseAllowedOrigins, parsePort } from "../../index.js";
 
 describe("parseAllowedOrigins", () => {
@@ -52,5 +57,42 @@ describe("fetchSwapiJson", () => {
     };
 
     await expect(fetchSwapiJson(fetchImpl, "/films/1/")).rejects.toThrow("network down");
+  });
+});
+
+describe("stdio startup logging", () => {
+  it("does not write non-protocol output to stdout", async () => {
+    const currentFile = fileURLToPath(import.meta.url);
+    const projectRoot = resolve(dirname(currentFile), "../..");
+
+    const child = spawn("node", ["--import", "tsx", "index.ts"], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        ENABLE_HTTP: "0",
+        ENABLE_STDIO: "1",
+      },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    let stdoutText = "";
+    let stderrText = "";
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      stdoutText += chunk;
+    });
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk: string) => {
+      stderrText += chunk;
+    });
+
+    await delay(350);
+    expect(child.exitCode).toBeNull();
+
+    child.kill("SIGTERM");
+    await once(child, "exit");
+
+    expect(stdoutText).toBe("");
+    expect(stderrText).not.toContain('"level":"info"');
   });
 });

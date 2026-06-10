@@ -103,12 +103,12 @@ This is the easiest way to use this MCP server from a second local VS Code windo
 4. Choose a local/command (stdio) server type.
 5. Use these values:
    - Name: `swapi-local`
-   - Command: `npm`
-   - Args: `run`, `dev`
+  - Command: `node`
+  - Args: `--import`, `tsx`, `index.ts`
    - Working directory: `/home/ola/work/ai-demos/swapi-mcp-server`
-   - Environment variables:
-     - `ENABLE_HTTP=0`
-     - `ENABLE_STDIO=1`
+  - Environment variables:
+    - `ENABLE_HTTP=0`
+    - `ENABLE_STDIO=1`
 6. Save the MCP server configuration and reload the second VS Code window if prompted.
 7. In Chat, verify the server is available (for example via MCP server/tools list UI, then call a tool like `search_character`).
 
@@ -119,8 +119,8 @@ If your VS Code MCP setup uses a JSON config file, this is the equivalent stdio 
   "servers": {
     "swapi-local": {
       "type": "stdio",
-      "command": "npm",
-      "args": ["run", "dev"],
+      "command": "node",
+      "args": ["--import", "tsx", "index.ts"],
       "cwd": "/home/ola/work/ai-demos/swapi-mcp-server",
       "env": {
         "ENABLE_HTTP": "0",
@@ -130,6 +130,8 @@ If your VS Code MCP setup uses a JSON config file, this is the equivalent stdio 
   }
 }
 ```
+
+If you see `Cannot find module .../dist/index.js` in MCP logs, your server was launched with a command that expects a built artifact. Use the direct stdio command shown above, or run `npm run build` before using `npm start`.
 
 ### Option B: Register as an HTTP MCP server
 

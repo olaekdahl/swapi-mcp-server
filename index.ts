@@ -20,9 +20,15 @@ export type AppOptions = {
   log?: Logger;
 };
 
+const isStdioOnlyMode = () =>
+  process.env.ENABLE_STDIO === "1" && process.env.ENABLE_HTTP === "0";
+
 const defaultLogger: Logger = {
   info: (message, context = {}) => {
-    console.log(JSON.stringify({ level: "info", message, ...context }));
+    if (isStdioOnlyMode()) {
+      return;
+    }
+    console.error(JSON.stringify({ level: "info", message, ...context }));
   },
   error: (message, context = {}) => {
     console.error(JSON.stringify({ level: "error", message, ...context }));
@@ -322,14 +328,20 @@ const isMainModule = () => {
 
 if (isMainModule()) {
   void (async () => {
-    const started = await startServer();
-    installProcessHandlers(started.stop, defaultLogger);
+    try {
+      const started = await startServer();
+      installProcessHandlers(started.stop, defaultLogger);
 
-    process.on("uncaughtException", (error) => {
-      defaultLogger.error("Uncaught exception", { error: error.message });
-    });
-    process.on("unhandledRejection", (reason) => {
-      defaultLogger.error("Unhandled rejection", { reason: String(reason) });
-    });
+      process.on("uncaughtException", (error) => {
+        defaultLogger.error("Uncaught exception", { error: error.message });
+      });
+      process.on("unhandledRejection", (reason) => {
+        defaultLogger.error("Unhandled rejection", { reason: String(reason) });
+      });
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      defaultLogger.error("Startup failed", { error: details });
+      process.exit(1);
+    }
   })();
 }
