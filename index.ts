@@ -37,6 +37,13 @@ const defaultLogger: Logger = {
 
 const SWAPI_BASE_URL = "https://swapi.online/api";
 
+const INTERNAL_CHARACTER_FACTS: Record<string, { character: string; fact: string }> = {
+  "luke skywalker": {
+    character: "Luke Skywalker",
+    fact: "Luke likes his blue milk warm and his tea cold.",
+  },
+};
+
 export const parseAllowedOrigins = (value?: string): string[] => {
   const rawOrigins = value ?? "http://localhost:3100,http://localhost:5173";
   return rawOrigins
@@ -54,6 +61,30 @@ export const parsePort = (value: string | undefined, fallback = 3100): number =>
     throw new Error(`Invalid PORT value: ${value}`);
   }
   return parsed;
+};
+
+export const parseTrustProxy = (
+  value: string | undefined,
+  fallback: boolean | number = 1
+): boolean | number => {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true") {
+    return true;
+  }
+  if (normalized === "false") {
+    return false;
+  }
+
+  const parsed = Number.parseInt(normalized, 10);
+  if (!Number.isNaN(parsed) && parsed >= 0) {
+    return parsed;
+  }
+
+  throw new Error(`Invalid TRUST_PROXY value: ${value}`);
 };
 
 const makeToolError = (message: string) => {
@@ -186,6 +217,42 @@ export const createMcpServer = (fetchImpl: typeof fetch = fetch) => {
     }
   );
 
+  // Internal-only demo data to show MCP access to private systems.
+  server.registerTool(
+    "get_internal_character_fact",
+    {
+      title: "Get Internal Character Fact",
+      description: "Get a private character fact from an internal system that is not in SWAPI",
+      inputSchema: { name: z.string() },
+    },
+    async ({ name }) => {
+      const lookupKey = name.trim().toLowerCase();
+      const internalRecord = INTERNAL_CHARACTER_FACTS[lookupKey];
+
+      if (internalRecord === undefined) {
+        return makeToolError(`No internal fact found for character: ${name}`);
+      }
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                source: "internal-character-profile-system",
+                visibility: "internal-only",
+                character: internalRecord.character,
+                fact: internalRecord.fact,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+  );
+
   // Prompt compatibility tools for clients that can only call tools (not prompts/get).
   server.registerTool(
     "prompt_analyze_character",
@@ -257,6 +324,7 @@ The Star Wars saga spans multiple eras, featuring iconic characters, planets, an
 - search_character: Find characters by name
 - get_planet: Retrieve planet information by ID
 - get_film: Get film details by ID
+- get_internal_character_fact: Retrieve private internal-only character facts
 
 Use these tools to explore the Star Wars universe!`,
           },
@@ -395,6 +463,7 @@ export const createApp = (options: AppOptions = {}) => {
   const allowedOrigins = options.allowedOrigins ?? parseAllowedOrigins(process.env.ALLOWED_ORIGINS);
   const log = options.log ?? defaultLogger;
   const app = express();
+  app.set("trust proxy", parseTrustProxy(process.env.TRUST_PROXY, 1));
 
   app.use(
     cors({

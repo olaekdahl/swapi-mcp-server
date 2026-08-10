@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx ./swapi-client.ts",
+    "dev:mcp": "USE_MCP=1 npm run dev",
+    "dev:no-mcp": "USE_MCP=0 npm run dev",
+    "dev:compare": "npm run dev:mcp && npm run dev:no-mcp",
     "typecheck": "tsc --noEmit",
     "test": "npm run typecheck"
   },

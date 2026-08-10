@@ -6,7 +6,8 @@ import OpenAI from 'openai';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 const serverUrl = process.env.MCP_SERVER_URL ?? 'http://localhost:3100/mcp';
 const model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
-const prompt = process.env.OPENAI_PROMPT ?? 'Where was Luke Skywalker born and how tall is he?';
+const prompt = process.env.OPENAI_PROMPT ?? 'Where was Luke Skywalker born, how tall is he, and what does the internal profile say about his milk and tea preference? If the tool "get_internal_character_fact" is unavailable, answer exactly: INTERNAL FACT UNAVAILABLE.';
+const useMcp = process.env.USE_MCP !== '0';
 const traceEnabled = process.env.MCP_TRACE !== '0';
 const verboseTrace = process.env.MCP_TRACE_VERBOSE === '1';
 const traceStart = Date.now();
@@ -68,23 +69,29 @@ const traceResponseItems = (output: unknown) => {
   });
 };
 
-const tools = [
-  {
-    type: "mcp" as const,
-    server_label: 'swapi',
-    server_url: serverUrl,
-    require_approval: 'never' as const,
-  },
-];
+const tools = useMcp
+  ? [
+      {
+        type: "mcp" as const,
+        server_label: 'swapi',
+        server_url: serverUrl,
+        require_approval: 'never' as const,
+      },
+    ]
+  : [];
 
 try {
-  trace('Demo started', `model=${model}`);
-  trace('Registered MCP server tool', `server_label=swapi, server_url=${serverUrl}`);
+  trace('Demo started', `model=${model}, use_mcp=${useMcp}`);
+  if (useMcp) {
+    trace('Registered MCP server tool', `server_label=swapi, server_url=${serverUrl}`);
+  } else {
+    trace('MCP tool integration disabled for this run');
+  }
   trace('Sending prompt to OpenAI Responses API', `prompt=${JSON.stringify(prompt)}`);
 
   const resp = await openai.responses.create({
     model,
-    tools,
+    ...(useMcp ? { tools } : {}),
     // simplest form - a single prompt string
     input: prompt,
     // or a richer message list:
@@ -107,8 +114,12 @@ try {
 } catch (error) {
   const details = error instanceof Error ? error.message : String(error);
   console.error('Failed to run test client.');
-  console.error(`MCP server URL: ${serverUrl}`);
+  if (useMcp) {
+    console.error(`MCP server URL: ${serverUrl}`);
+  }
   console.error(`Reason: ${details}`);
-  console.error('Tip: if this URL is localhost, use a tunnel URL when the model runtime cannot access your local machine.');
+  if (useMcp) {
+    console.error('Tip: if this URL is localhost, use a tunnel URL when the model runtime cannot access your local machine.');
+  }
   process.exitCode = 1;
 }

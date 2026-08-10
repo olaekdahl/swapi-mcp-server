@@ -5,10 +5,11 @@ A Model Context Protocol (MCP) server that wraps the [Star Wars API (SWAPI)](htt
 ## Features
 
 - **MCP-compliant server** using the official TypeScript SDK
-- Exposes three tools:
+- Exposes four tools:
   - `search_character`: Search for a Star Wars character by name
   - `get_planet`: Get detailed planet info by ID
   - `get_film`: Get detailed film info by ID
+  - `get_internal_character_fact`: Get private internal-only character facts (demo data)
 - Exposes prompt templates:
   - `analyze-character`
   - `compare-characters`
@@ -45,6 +46,12 @@ A Model Context Protocol (MCP) server that wraps the [Star Wars API (SWAPI)](htt
 - **Input:** `{ id: string }`
 - **Description:** Fetches detailed info for a film by its SWAPI ID.
 - **Returns:** JSON-formatted film details.
+
+### get_internal_character_fact
+
+- **Input:** `{ name: string }`
+- **Description:** Fetches a private character fact from a simulated internal system (not from SWAPI).
+- **Returns:** JSON with `source`, `visibility`, `character`, and `fact`.
 
 ### prompt_analyze_character
 
@@ -95,6 +102,7 @@ npm install
 - `PORT` (default `3100`)
 - `ENABLE_HTTP` (default `1`; set `0` to disable HTTP transport)
 - `ENABLE_STDIO` (default `0`; set `1` to enable stdio transport)
+- `TRUST_PROXY` (default `1`; set `0` to disable trusting proxy headers)
 - `ALLOWED_ORIGINS` (comma-separated CORS allowlist, defaults to `http://localhost:3100,http://localhost:5173`)
 
 ### Run in HTTP mode (default)
@@ -294,20 +302,24 @@ import OpenAI from 'openai';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 const serverUrl = process.env.MCP_SERVER_URL ?? 'http://localhost:3100/mcp';
 const model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
+const prompt = process.env.OPENAI_PROMPT ?? 'Where was Luke Skywalker born, how tall is he, and what does the internal profile say about his milk and tea preference? If the tool "get_internal_character_fact" is unavailable, answer exactly: INTERNAL FACT UNAVAILABLE.';
+const useMcp = process.env.USE_MCP !== '0';
 
-const tools = [
-  {
-    type: "mcp" as const,
-    server_label: 'swapi',
-    server_url: serverUrl,
-    require_approval: 'never' as const,
-  },
-];
+const tools = useMcp
+  ? [
+      {
+        type: "mcp" as const,
+        server_label: 'swapi',
+        server_url: serverUrl,
+        require_approval: 'never' as const,
+      },
+    ]
+  : [];
 
 const resp = await openai.responses.create({
   model,
-  tools,
-  input: 'Where was Luke Skywalker born and how tall is he?',
+  ...(useMcp ? { tools } : {}),
+  input: prompt,
 });
 
 console.log(resp.output_text);
@@ -323,6 +335,7 @@ console.log(resp.output_text);
 2. Set your OpenAI API key in a `.env` file:
    ```env
    OPENAI_API_KEY=sk-...
+  USE_MCP=1
    ```
 3. Start the MCP server (in the parent directory):
    ```bash
@@ -341,23 +354,88 @@ The test client prints a lightweight trace by default so you can explain the req
 Example trace output:
 
 ```text
-[trace +0.00s] Demo started | model=gpt-4o-mini
+[trace +0.00s] Demo started | model=gpt-4o-mini, use_mcp=true
 [trace +0.00s] Registered MCP server tool | server_label=swapi, server_url=https://your-ngrok-url/mcp
-[trace +0.00s] Sending prompt to OpenAI Responses API | prompt="Where was Luke Skywalker born and how tall is he?"
+[trace +0.00s] Sending prompt to OpenAI Responses API | prompt="Where was Luke Skywalker born, how tall is he, and what does the internal profile say about his milk and tea preference? If the tool \"get_internal_character_fact\" is unavailable, answer exactly: INTERNAL FACT UNAVAILABLE."
 [trace +1.12s] OpenAI response received | response_id=resp_...
-[trace +1.12s] Structured response items received | count=3
+[trace +1.12s] Structured response items received | count=4
 [trace +1.12s] Output[0] | type=reasoning
 [trace +1.12s] Output[1] | type=mcp_call, name=search_character, status=completed, server_label=swapi
-[trace +1.12s] Output[2] | type=message, role=assistant
+[trace +1.12s] Output[2] | type=mcp_call, name=get_internal_character_fact, status=completed, server_label=swapi
+[trace +1.12s] Output[3] | type=message, role=assistant
 [trace +1.12s] Printing final answer to console
-Luke Skywalker was born on the planet Tatooine. He is 172 centimeters tall.
+Luke Skywalker was born on Tatooine and is 172 centimeters tall. Internal fact: Luke likes his blue milk warm and his tea cold.
 ```
 
 Trace options:
 
+- `USE_MCP=1` enables MCP tool usage (default).
+- `USE_MCP=0` runs the same prompt directly against the LLM, without MCP tools.
 - `MCP_TRACE=0` disables trace logs.
 - `MCP_TRACE_VERBOSE=1` prints full structured response items as JSON.
 - `OPENAI_PROMPT="..."` overrides the default demo question.
+
+### Side-by-side demo: with MCP vs without MCP
+
+Single command (runs both modes back-to-back):
+
+```bash
+cd test-client
+npm run dev:compare
+```
+
+Run with MCP enabled:
+
+```bash
+cd test-client
+USE_MCP=1 npm run dev
+```
+
+Run without MCP:
+
+```bash
+cd test-client
+USE_MCP=0 npm run dev
+```
+
+Example responses for the same prompt:
+
+| Mode | Example response |
+| --- | --- |
+| With MCP (`USE_MCP=1`) | `Luke Skywalker was born on Tatooine and is 172 centimeters tall. Internal fact: Luke likes his blue milk warm and his tea cold.` |
+| Without MCP (`USE_MCP=0`) | `Luke Skywalker was born on Tatooine and is about 172 cm (5'8"). INTERNAL FACT UNAVAILABLE.` |
+
+Example trace with MCP (`USE_MCP=1`):
+
+```text
+[trace +0.00s] Demo started | model=gpt-4o-mini, use_mcp=true
+[trace +0.00s] Registered MCP server tool | server_label=swapi, server_url=https://your-ngrok-url/mcp
+[trace +0.00s] Sending prompt to OpenAI Responses API | prompt="Where was Luke Skywalker born, how tall is he, and what does the internal profile say about his milk and tea preference? If the tool \"get_internal_character_fact\" is unavailable, answer exactly: INTERNAL FACT UNAVAILABLE."
+[trace +1.12s] OpenAI response received | response_id=resp_...
+[trace +1.12s] Structured response items received | count=4
+[trace +1.12s] Output[0] | type=reasoning
+[trace +1.12s] Output[1] | type=mcp_call, name=search_character, status=completed, server_label=swapi
+[trace +1.12s] Output[2] | type=mcp_call, name=get_internal_character_fact, status=completed, server_label=swapi
+[trace +1.12s] Output[3] | type=message, role=assistant
+[trace +1.12s] Printing final answer to console
+Luke Skywalker was born on Tatooine and is 172 centimeters tall. Internal fact: Luke likes his blue milk warm and his tea cold.
+```
+
+Example trace without MCP (`USE_MCP=0`):
+
+```text
+[trace +0.00s] Demo started | model=gpt-4o-mini, use_mcp=false
+[trace +0.00s] MCP tool integration disabled for this run
+[trace +0.00s] Sending prompt to OpenAI Responses API | prompt="Where was Luke Skywalker born, how tall is he, and what does the internal profile say about his milk and tea preference? If the tool \"get_internal_character_fact\" is unavailable, answer exactly: INTERNAL FACT UNAVAILABLE."
+[trace +0.98s] OpenAI response received | response_id=resp_...
+[trace +0.98s] Structured response items received | count=2
+[trace +0.98s] Output[0] | type=reasoning
+[trace +0.98s] Output[1] | type=message, role=assistant
+[trace +0.98s] Printing final answer to console
+Luke Skywalker was born on Tatooine and is about 172 cm (5'8") tall. INTERNAL FACT UNAVAILABLE.
+```
+
+For demos, the key difference is the `mcp_call` item in the MCP trace, which shows the LLM called both SWAPI and internal systems instead of relying only on model knowledge.
 
 ### MCP flow diagram
 
@@ -367,6 +445,7 @@ sequenceDiagram
   participant OpenAI as OpenAI Responses API (LLM runtime)
   participant MCP as SWAPI MCP Server (/mcp)
   participant SWAPI as swapi.online API
+  participant Internal as Internal Character Profile System
 
   Console->>OpenAI: responses.create(model, tools[mcp], input)
   OpenAI->>MCP: tools/list
@@ -374,6 +453,10 @@ sequenceDiagram
   OpenAI->>MCP: tools/call (search_character)
   MCP->>SWAPI: GET /people/?search=Luke
   SWAPI-->>MCP: character JSON
+  MCP-->>OpenAI: tool result
+  OpenAI->>MCP: tools/call (get_internal_character_fact)
+  MCP->>Internal: Lookup Luke private preference
+  Internal-->>MCP: Internal-only fact JSON
   MCP-->>OpenAI: tool result
   OpenAI-->>Console: final natural-language answer
   Console->>Console: print trace + answer

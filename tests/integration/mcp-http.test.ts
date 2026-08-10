@@ -74,6 +74,7 @@ describe("MCP HTTP endpoint", () => {
     expect(bodyText).toContain("search_character");
     expect(bodyText).toContain("get_planet");
     expect(bodyText).toContain("get_film");
+    expect(bodyText).toContain("get_internal_character_fact");
   });
 
   it("calls get_planet tool via tools/call", async () => {
@@ -98,5 +99,30 @@ describe("MCP HTTP endpoint", () => {
 
     expect(response.status).toBe(200);
     expect(bodyText).toContain("Tatooine");
+  });
+
+  it("calls get_internal_character_fact tool via tools/call", async () => {
+    const response = await fetch(`${baseUrl}/mcp`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 3,
+        method: "tools/call",
+        params: {
+          name: "get_internal_character_fact",
+          arguments: { name: "Luke Skywalker" },
+        },
+      }),
+    });
+
+    const bodyText = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(bodyText).toContain("internal-character-profile-system");
+    expect(bodyText).toContain("blue milk warm");
   });
 });

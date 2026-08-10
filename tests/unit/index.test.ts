@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
-import { fetchSwapiJson, parseAllowedOrigins, parsePort } from "../../index.js";
+import { fetchSwapiJson, parseAllowedOrigins, parsePort, parseTrustProxy } from "../../index.js";
 
 describe("parseAllowedOrigins", () => {
   it("parses comma-separated origins", () => {
@@ -25,6 +25,26 @@ describe("parsePort", () => {
 
   it("throws for invalid values", () => {
     expect(() => parsePort("abc", 3000)).toThrow("Invalid PORT value");
+  });
+});
+
+describe("parseTrustProxy", () => {
+  it("uses fallback when undefined", () => {
+    expect(parseTrustProxy(undefined, 1)).toBe(1);
+  });
+
+  it("parses boolean true and false", () => {
+    expect(parseTrustProxy("true", 1)).toBe(true);
+    expect(parseTrustProxy("false", 1)).toBe(false);
+  });
+
+  it("parses non-negative integer values", () => {
+    expect(parseTrustProxy("0", 1)).toBe(0);
+    expect(parseTrustProxy("2", 1)).toBe(2);
+  });
+
+  it("throws for invalid values", () => {
+    expect(() => parseTrustProxy("abc", 1)).toThrow("Invalid TRUST_PROXY value");
   });
 });
 
