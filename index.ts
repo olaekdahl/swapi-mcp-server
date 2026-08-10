@@ -38,14 +38,14 @@ const defaultLogger: Logger = {
 const SWAPI_BASE_URL = "https://swapi.online/api";
 
 export const parseAllowedOrigins = (value?: string): string[] => {
-  const rawOrigins = value ?? "http://localhost:3000,http://localhost:5173";
+  const rawOrigins = value ?? "http://localhost:3100,http://localhost:5173";
   return rawOrigins
     .split(",")
     .map((origin) => origin.trim())
     .filter((origin) => origin.length > 0);
 };
 
-export const parsePort = (value: string | undefined, fallback = 3000): number => {
+export const parsePort = (value: string | undefined, fallback = 3100): number => {
   if (value === undefined) {
     return fallback;
   }
@@ -478,7 +478,7 @@ export const startServer = async (options: AppOptions = {}): Promise<StartedServ
 
   if (enableHttp) {
     const app = createApp(options);
-    const port = parsePort(process.env.PORT, 3000);
+    const port = parsePort(process.env.PORT, 3100);
     httpServer = await new Promise<HttpServer>((resolve) => {
       const server = createServer(app);
       server.listen(port, () => {

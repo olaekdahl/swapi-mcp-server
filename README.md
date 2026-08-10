@@ -92,10 +92,10 @@ npm install
 
 ### Environment variables
 
-- `PORT` (default `3000`)
+- `PORT` (default `3100`)
 - `ENABLE_HTTP` (default `1`; set `0` to disable HTTP transport)
 - `ENABLE_STDIO` (default `0`; set `1` to enable stdio transport)
-- `ALLOWED_ORIGINS` (comma-separated CORS allowlist, defaults to `http://localhost:3000,http://localhost:5173`)
+- `ALLOWED_ORIGINS` (comma-separated CORS allowlist, defaults to `http://localhost:3100,http://localhost:5173`)
 
 ### Run in HTTP mode (default)
 
@@ -103,7 +103,7 @@ npm install
 npm run dev
 ```
 
-- The server will listen on `http://localhost:3000/mcp` (or the port set in the `PORT` environment variable).
+- The server will listen on `http://localhost:3100/mcp` (or the port set in the `PORT` environment variable).
 
 ### Run in stdio mode (for CLI clients)
 
@@ -194,7 +194,7 @@ npm run dev
 2. In the second VS Code instance, add an MCP server using URL:
 
 ```text
-http://localhost:3000/mcp
+http://localhost:3100/mcp
 ```
 
 3. Save and test by calling a tool from Chat.
@@ -206,7 +206,7 @@ If your VS Code MCP setup uses JSON config, this is the equivalent HTTP config:
   "servers": {
     "swapi-http": {
       "type": "http",
-      "url": "http://localhost:3000/mcp"
+      "url": "http://localhost:3100/mcp"
     }
   }
 }
@@ -217,7 +217,7 @@ If your VS Code MCP setup uses JSON config, this is the equivalent HTTP config:
 **List tools:**
 
 ```bash
-curl -X POST http://localhost:3000/mcp \
+curl -X POST http://localhost:3100/mcp \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
   -d '{"jsonrpc":"2.0","id":0,"method":"tools/list","params":{}}'
@@ -226,7 +226,7 @@ curl -X POST http://localhost:3000/mcp \
 **Search for a character:**
 
 ```bash
-curl -N -X POST http://localhost:3000/mcp \
+curl -N -X POST http://localhost:3100/mcp \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
   -d '{
@@ -243,7 +243,7 @@ curl -N -X POST http://localhost:3000/mcp \
 **Get a planet by ID:**
 
 ```bash
-curl -N -X POST http://localhost:3000/mcp \
+curl -N -X POST http://localhost:3100/mcp \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
   -d '{
@@ -260,7 +260,7 @@ curl -N -X POST http://localhost:3000/mcp \
 **Get a film by ID:**
 
 ```bash
-curl -N -X POST http://localhost:3000/mcp \
+curl -N -X POST http://localhost:3100/mcp \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
   -d '{
@@ -287,12 +287,12 @@ The `test-client/` directory contains an example script (`swapi-client.ts`) that
 ### Example: `test-client/swapi-client.ts`
 
 ```typescript
-// node --loader ts-node/esm ./swapi-client.ts
+// tsx ./swapi-client.ts
 import 'dotenv/config';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-const serverUrl = process.env.MCP_SERVER_URL ?? 'http://localhost:3000/mcp';
+const serverUrl = process.env.MCP_SERVER_URL ?? 'http://localhost:3100/mcp';
 const model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
 
 const tools = [
@@ -326,16 +326,52 @@ console.log(resp.output_text);
    ```
 3. Start the MCP server (in the parent directory):
    ```bash
-  npm run dev
+   npm run dev
    ```
 4. Run the test client:
    ```bash
-  cd test-client
-  npm run dev
+   cd test-client
+   npm run dev
    ```
 
 - You should see the LLM's answer, which may include information fetched from the SWAPI MCP tools.
 - To test with a remote tunnel, set `MCP_SERVER_URL` in `test-client/.env`.
+
+### Troubleshooting: 424 error with localhost MCP URL
+
+If you see this when running the test client:
+
+```text
+Failed to run test client.
+MCP server URL: http://localhost:3100/mcp
+Reason: 424 Error retrieving tool list from MCP server: 'swapi'. Http status code: 400 (Bad Request)
+```
+
+the model runtime likely cannot reach your local machine at `localhost`. Expose your local MCP server with ngrok and use that public URL instead.
+
+1. Start the MCP server (in this repository):
+   ```bash
+   npm run dev
+   ```
+2. In another terminal, start an ngrok tunnel to port `3100`:
+   ```bash
+   ngrok http 3100
+   ```
+3. Copy the HTTPS forwarding URL from ngrok (for example, `https://abcd-1234.ngrok-free.app`).
+4. Set `MCP_SERVER_URL` in `test-client/.env` to that URL plus `/mcp`:
+   ```env
+   MCP_SERVER_URL=https://abcd-1234.ngrok-free.app/mcp
+   ```
+5. Run the test client again:
+   ```bash
+   cd test-client
+   npm run dev
+   ```
+
+Notes:
+- Use the HTTPS ngrok URL, not the HTTP one.
+- Every time ngrok restarts, the forwarding URL may change (unless you use a reserved domain), so update `MCP_SERVER_URL` if needed.
+- Keep both the MCP server and ngrok process running while testing.
 
 ## Testing
 

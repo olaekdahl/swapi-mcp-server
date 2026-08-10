@@ -4,7 +4,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "node --loader ts-node/esm ./swapi-client.ts",
+    "dev": "tsx ./swapi-client.ts",
     "typecheck": "tsc --noEmit",
     "test": "npm run typecheck"
   },
@@ -19,6 +19,7 @@
   "devDependencies": {
     "@types/node": "^24.0.10",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   }
 }
