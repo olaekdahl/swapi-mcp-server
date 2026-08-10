@@ -334,6 +334,51 @@ console.log(resp.output_text);
    npm run dev
    ```
 
+### Trace output for MCP demos
+
+The test client prints a lightweight trace by default so you can explain the request path during demos.
+
+Example trace output:
+
+```text
+[trace +0.00s] Demo started | model=gpt-4o-mini
+[trace +0.00s] Registered MCP server tool | server_label=swapi, server_url=https://your-ngrok-url/mcp
+[trace +0.00s] Sending prompt to OpenAI Responses API | prompt="Where was Luke Skywalker born and how tall is he?"
+[trace +1.12s] OpenAI response received | response_id=resp_...
+[trace +1.12s] Structured response items received | count=3
+[trace +1.12s] Output[0] | type=reasoning
+[trace +1.12s] Output[1] | type=mcp_call, name=search_character, status=completed, server_label=swapi
+[trace +1.12s] Output[2] | type=message, role=assistant
+[trace +1.12s] Printing final answer to console
+Luke Skywalker was born on the planet Tatooine. He is 172 centimeters tall.
+```
+
+Trace options:
+
+- `MCP_TRACE=0` disables trace logs.
+- `MCP_TRACE_VERBOSE=1` prints full structured response items as JSON.
+- `OPENAI_PROMPT="..."` overrides the default demo question.
+
+### MCP flow diagram
+
+```mermaid
+sequenceDiagram
+  participant Console as test-client/swapi-client.ts
+  participant OpenAI as OpenAI Responses API (LLM runtime)
+  participant MCP as SWAPI MCP Server (/mcp)
+  participant SWAPI as swapi.online API
+
+  Console->>OpenAI: responses.create(model, tools[mcp], input)
+  OpenAI->>MCP: tools/list
+  MCP-->>OpenAI: available tools
+  OpenAI->>MCP: tools/call (search_character)
+  MCP->>SWAPI: GET /people/?search=Luke
+  SWAPI-->>MCP: character JSON
+  MCP-->>OpenAI: tool result
+  OpenAI-->>Console: final natural-language answer
+  Console->>Console: print trace + answer
+```
+
 - You should see the LLM's answer, which may include information fetched from the SWAPI MCP tools.
 - To test with a remote tunnel, set `MCP_SERVER_URL` in `test-client/.env`.
 
